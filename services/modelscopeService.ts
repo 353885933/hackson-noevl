@@ -28,14 +28,24 @@ interface ChatCompletionOptions {
  * 创建 ModelScope OpenAI 兼容客户端
  */
 const createModelscopeClient = (): OpenAI => {
-  const apiKey = process.env.MODELSCOPE_API_KEY;
+  const apiKey = (typeof process !== 'undefined' ? (process.env.MODELSCOPE_API_KEY || process.env.VITE_MODELSCOPE_API_KEY) : null)
+    || (import.meta as any).env?.VITE_MODELSCOPE_API_KEY
+    || (import.meta as any).env?.MODELSCOPE_API_KEY;
+
   if (!apiKey) {
     throw new Error("MODELSCOPE_API_KEY environment variable is missing.");
   }
 
+  // Use proxy in browser environment to avoid CORS
+  // OpenAI client requires an absolute URL, so we prepend window.location.origin
+  const baseURL = typeof window !== 'undefined'
+    ? `${window.location.origin}/api/modelscope`
+    : MODELSCOPE_BASE_URL;
+
   return new OpenAI({
-    baseURL: MODELSCOPE_BASE_URL,
+    baseURL: baseURL,
     apiKey: apiKey,
+    dangerouslyAllowBrowser: true // Enable browser usage since this is a client-side app
   });
 };
 

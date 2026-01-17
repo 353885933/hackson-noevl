@@ -89,11 +89,13 @@ export const analyzeStory = async (
     console.log("Phase 3/4: Assembling Final Script...");
     const finalScript = assembleScript(outline, fragments);
 
-    // --- Phase 4: Visual Asset Generation (Pre-generation Mode) ---
-    console.log("Phase 4/4: Generating Background Assets (Wanx)...");
+    // --- Phase 4: Visual Asset Generation ---
+    console.log("Phase 4/4: Generating Visual Assets (Wanx)...");
 
     const sceneAssets = finalScript.scenes.filter(s => !s.imageUrl);
-    const totalAssets = sceneAssets.length;
+    const visualNodes = finalScript.nodes.filter(n => n.visualSpecs && !n.visualSpecs.imageUrl);
+
+    const totalAssets = sceneAssets.length + visualNodes.length;
     let assetsDone = 0;
 
     if (totalAssets > 0) {
@@ -105,7 +107,7 @@ export const analyzeStory = async (
           phase: 'ASSETS',
           current: assetsDone,
           total: totalAssets,
-          message: `正在精心绘制环境背景: ${scene.description.slice(0, 15)}...`
+          message: `正在准备基础背景: ${scene.description.slice(0, 15)}...`
         });
 
         try {
@@ -117,15 +119,37 @@ export const analyzeStory = async (
         }
         assetsDone++;
       }
+
+      // 2. Generate Event CGs (Aha Moments)
+      for (const node of visualNodes) {
+        onProgress?.({
+          phase: 'ASSETS',
+          current: assetsDone,
+          total: totalAssets,
+          message: `正在精心刻画高光瞬间...`
+        });
+        try {
+          node.visualSpecs!.imageUrl = await withRetry(() =>
+            generateImage(node.visualSpecs!.visualPrompt, 'reality')
+          );
+        } catch (err) {
+          console.error(`❌ Failed to generate event visual:`, err);
+        }
+        assetsDone++;
+      }
     }
 
     // --- Phase 5: Browser Preloading (Zero-Loading Mode) ---
     if (typeof window !== 'undefined') {
       const allAssetMappings: { ref: any, key: string, url: string }[] = [];
 
-      // Collect only scenes for preloading
+      // Collect scenes
       finalScript.scenes.forEach(s => {
         if (s.imageUrl) allAssetMappings.push({ ref: s, key: 'imageUrl', url: s.imageUrl });
+      });
+      // Collect event visuals
+      finalScript.nodes.forEach(n => {
+        if (n.visualSpecs?.imageUrl) allAssetMappings.push({ ref: n.visualSpecs, key: 'imageUrl', url: n.visualSpecs.imageUrl });
       });
 
       if (allAssetMappings.length > 0) {

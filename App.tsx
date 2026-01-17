@@ -27,9 +27,10 @@ const App: React.FC = () => {
       console.log("Script Generated:", result);
       setScript(result);
       setGameState(GameState.PLAYING);
-    } catch (err) {
-      console.error(err);
-      setError("故事转化失败。系统检测到异常，请重试。");
+    } catch (err: any) {
+      console.error("Pipeline Error Details:", err);
+      const errorMessage = err?.message || "未知错误";
+      setError(`故事转化失败：${errorMessage}`);
       setGameState(GameState.IDLE);
     }
   };

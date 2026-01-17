@@ -112,9 +112,7 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
 
   const getCharacterImage = (character: Character) => {
     if (character.imageUrl) return character.imageUrl;
-    // Fallback
-    const seed = character.name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    return `https://picsum.photos/seed/${seed}_char/600/900?grayscale`;
+    return undefined;
   };
 
   const getBackgroundImage = (sceneId: string) => {
@@ -150,20 +148,38 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
       {/* 2. Scene/Mood Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-ink/50 pointer-events-none" />
 
+      {/* 2.5. Event CG Layer (Aha Moments) */}
+      {currentNode.visualSpecs?.imageUrl && (
+        <div className="absolute inset-0 z-15 animate-fade-in overflow-hidden">
+          <img
+            src={currentNode.visualSpecs.imageUrl}
+            className="w-full h-full object-cover transition-transform duration-[10000ms] scale-110 hover:scale-100"
+            alt="Event Visual"
+          />
+          {/* Subtle vignette for CG */}
+          <div className="absolute inset-0 bg-radial-gradient from-transparent to-ink/40 pointer-events-none" />
+        </div>
+      )}
+
       {/* 3. Character Layer */}
       <div className="absolute inset-0 flex items-end justify-center pointer-events-none z-10">
-        {currentCharacter && (
-          <div className="relative animate-slide-up">
-            <img
-              src={getCharacterImage(currentCharacter)}
-              alt={currentCharacter.name}
-              className="h-[80vh] object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] filter contrast-125 sepia-[0.3]"
-            />
-            <div className="absolute top-1/2 -left-12 bg-signal text-ink font-black text-4xl uppercase -rotate-90 px-4 py-2 shadow-lg">
-              {currentCharacter.name}
+        {currentCharacter && (() => {
+          const charImg = getCharacterImage(currentCharacter);
+          return (
+            <div className="relative animate-slide-up">
+              {charImg && (
+                <img
+                  src={charImg}
+                  alt={currentCharacter.name}
+                  className="h-[80vh] object-contain drop-shadow-[0_10px_20px_rgba(0,0,0,0.8)] filter contrast-125 sepia-[0.3]"
+                />
+              )}
+              <div className="absolute top-1/2 -left-12 bg-signal text-ink font-black text-4xl uppercase -rotate-90 px-4 py-2 shadow-lg">
+                {currentCharacter.name}
+              </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
       </div>
 
       {/* 4. UI Layer */}
@@ -171,10 +187,12 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
 
         {/* Top Bar */}
         <div className="flex justify-between items-start pointer-events-auto">
+          {/* 
           <div className="bg-paper/90 border-l-4 border-signal p-4 max-w-sm shadow-lg backdrop-blur-sm">
             <h2 className="font-mono text-xs text-ink/50 uppercase tracking-widest mb-1">当前场景</h2>
             <p className="font-serif font-bold text-lg leading-tight text-ink">{currentScene?.description || "未知地点"}</p>
-          </div>
+          </div> 
+          */}
 
           <div className="flex gap-2">
             <button
@@ -270,10 +288,11 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
             )}
 
             {/* Text Content */}
-            <p className="font-serif text-xl md:text-2xl leading-relaxed tracking-wide select-none text-paper/90">
-              {currentCharacter && '「'}
+            <p className={`font-serif text-xl md:text-2xl leading-relaxed tracking-wide select-none ${typingText.startsWith('（') ? 'text-paper/60 italic' : 'text-paper/90'}`}>
+              {/* 对话自动添加「」 */}
+              {currentCharacter && !typingText.startsWith('（') && '「'}
               {typingText}
-              {currentCharacter && '」'}
+              {currentCharacter && !typingText.startsWith('（') && '」'}
               {isTyping && <span className="animate-flicker inline-block w-2 h-6 bg-signal ml-1 align-middle"></span>}
             </p>
 

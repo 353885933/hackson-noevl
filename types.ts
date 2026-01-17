@@ -5,6 +5,7 @@ export interface Character {
   visualTraits: string; // Used to seed image generation
   imageUrl?: string;
   themeColor?: string;
+  isPOV?: boolean;
 }
 
 export interface Scene {

@@ -82,6 +82,20 @@ export const assembleScript = (outline: StoryOutline, fragments: ScriptFragment[
         allNodes.push(...processedNodes);
     });
 
+    // 3. Append explicit THE_END node to avoid "Missing Node" crash
+    if (allNodes.length > 0) {
+        const lastSceneId = allNodes[allNodes.length - 1].sceneId;
+        allNodes.push({
+            id: "THE_END",
+            characterId: null,
+            text: "（本章完）",
+            sceneId: lastSceneId || "scene_end",
+            choices: [],
+            isEnding: true,
+            visualSpecs: undefined
+        });
+    }
+
     return {
         title: outline.title || "未命名剧本",
         synopsis: outline.synopsis || "无简介",

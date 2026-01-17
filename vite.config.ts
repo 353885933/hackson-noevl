@@ -19,6 +19,26 @@ export default defineConfig(({ mode }) => {
               console.log(`[Proxy] ${req.method} ${req.url} -> ${options.target}${req.url}`);
             });
           }
+        },
+        '/api/modelscope': {
+          target: 'https://api-inference.modelscope.cn/v1',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/modelscope/, ''),
+          configure: (proxy, options) => {
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              console.log(`[Proxy ModelScope] ${req.method} ${req.url} -> ${options.target}${req.url}`);
+            });
+          }
+        },
+        '/api/minimax': {
+          target: 'https://api.minimaxi.com',
+          changeOrigin: true,
+          rewrite: (path) => path.replace(/^\/api\/minimax/, ''),
+          configure: (proxy, options) => {
+            proxy.on('proxyReq', (proxyReq, req, res) => {
+              console.log(`[Proxy Minimax] ${req.method} ${req.url} -> ${options.target}${req.url}`);
+            });
+          }
         }
       }
     },
