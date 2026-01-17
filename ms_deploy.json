@@ -1,0 +1,28 @@
+{
+    "$schema": "https://modelscope.cn/api/v1/studios/deploy_schema.json",
+    "sdk_type": "docker",
+    "resource_configuration": "platform/2v-cpu-16g-mem",
+    "port": 7860,
+    "environment_variables": [
+        {
+            "name": "VITE_ALIYUN_API_KEY",
+            "value": "sk-1688774835994318b23cbce4026bf1a9"
+        },
+        {
+            "name": "VITE_DASHSCOPE_API_KEY",
+            "value": "sk-1688774835994318b23cbce4026bf1a9"
+        },
+        {
+            "name": "VITE_MODELSCOPE_API_KEY",
+            "value": "ms-09f5feb2-b785-4239-8e64-364a7b574bf9"
+        },
+        {
+            "name": "VITE_MINIMAX_API_KEY",
+            "value": "sk-api-DAhwPATFydPVPcCI2cKNYhtnNETvXmWlsr0NjvwhlP0zsGJ5z0tCgCN7-9jf41T_O9NPtDvp-_zSdq8hg4c_7r_yeLGzHmf0Rh285lQTr34RJEF07id8Qkg"
+        },
+        {
+            "name": "NODE_ENV",
+            "value": "production"
+        }
+    ]
+}

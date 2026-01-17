@@ -6,7 +6,7 @@
 import OpenAI from "openai";
 
 const DASHSCOPE_BASE_URL = "https://dashscope.aliyuncs.com/compatible-mode/v1";
-const DASHSCOPE_MODEL = "qwen-plus"; // or "qwen-turbo" for faster responses
+const DASHSCOPE_MODEL = "qwen3-max"; // 旗舰模型，效果最好，适合复杂任务
 
 interface ChatMessage {
     role: "system" | "user" | "assistant";

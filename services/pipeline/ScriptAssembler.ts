@@ -15,6 +15,9 @@ export const assembleScript = (outline: StoryOutline, fragments: ScriptFragment[
         // Format: "beat_{beatId}_{originalNodeId}"
         const prefix = `beat_${fragment.beatId}_`;
 
+        // First pass: Build a set of all valid node IDs in this fragment (without prefix)
+        const validNodeIds = new Set(fragment.nodes.map(n => n.id));
+
         // We need to map over nodes and use the index to resolve "NEXT"
         const processedNodes = fragment.nodes.map((node, nodeIndex) => {
             const newNodeId = node.id.startsWith(prefix) ? node.id : `${prefix}${node.id}`;
@@ -48,7 +51,28 @@ export const assembleScript = (outline: StoryOutline, fragments: ScriptFragment[
                     }
                 }
 
-                // --- CASE C: Normal Local Link ---
+                // --- CASE C: Dangling Reference Detection ---
+                // If the AI generated a reference to a node that doesn't exist in this fragment
+                if (!validNodeIds.has(targetId) && targetId !== "THE_END") {
+                    console.warn(`[ScriptAssembler] Dangling reference detected: "${targetId}" in beat ${fragment.beatId}. Redirecting to safe fallback.`);
+
+                    // Try to link to the next node in sequence
+                    const nextNodeInFragment = fragment.nodes[nodeIndex + 1];
+                    if (nextNodeInFragment) {
+                        return { ...choice, nextNodeId: `${prefix}${nextNodeInFragment.id}` };
+                    } else {
+                        // If this is the last node, redirect to END_OF_FRAGMENT
+                        targetId = "END_OF_FRAGMENT";
+                        if (nextFragment && nextFragment.nodes.length > 0) {
+                            const nextFirstNodeId = `beat_${nextFragment.beatId}_${nextFragment.nodes[0].id}`;
+                            return { ...choice, nextNodeId: nextFirstNodeId, text: choice.text };
+                        } else {
+                            return { ...choice, nextNodeId: "THE_END", text: choice.text };
+                        }
+                    }
+                }
+
+                // --- CASE D: Normal Local Link ---
                 // If the AI linked to a specific ID (e.g. "node_3"), we just prefix it.
                 return { ...choice, nextNodeId: `${prefix}${targetId}` };
             });

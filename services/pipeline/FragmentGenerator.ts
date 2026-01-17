@@ -35,7 +35,10 @@ export const generateFragment = async (input: FragmentInput): Promise<StoryNode[
     // Construct a focused prompt for this specific batch
     const beatSummaries = input.beatsToProcess.map(b => `- Beat ${b.id}: ${b.summary} (在此处发生)`).join("\n");
     const sortedChars = [...(input.characters || [])].sort((a, b) => (b.isPOV ? 1 : 0) - (a.isPOV ? 1 : 0));
-    const charContext = sortedChars.map(c => `${c.name}${c.isPOV ? ' (视角人物/POV)' : ''}: ${c.description}`).join("\n");
+    // Enhanced character context with IDs and visual traits
+    const charContext = sortedChars.map(c =>
+        `【${c.id}】${c.name}${c.isPOV ? ' (视角人物/POV)' : ''}\n  - 性格/身份: ${c.description}\n  - 外貌特征: ${c.visualTraits || '未指定'}`
+    ).join("\n\n");
     const sceneContext = (input.scenes || []).map(s => `${s.id}: ${s.description}`).join("\n");
 
     const systemInstruction = `
@@ -43,14 +46,19 @@ export const generateFragment = async (input: FragmentInput): Promise<StoryNode[
     你的任务是根据提供的小说原文和"剧情节拍表"，**仅为**指定的几个节拍生成详细的对话和旁白节点。
 
     ### 🕵️ 角色归属判定协议 (必须严格执行):
-    在生成台词节点前，必须进行以下三步判定：
+    在生成台词节点前，必须进行以下四步判定：
     1. **上下文锚点**: 检查原文台词前后的动作描写（如“xx说道”、“xx叹气”）。
     2. **称呼逻辑**: 对照【角色信息】中的别名（如“哥哥”=妹妹说话）。
-    3. **引用校验**: 在生成的 JSON 中，每个节点**必须**包含 \`_source_text\` 字段，填入该节点对应的小说原文作为依据，防止幻觉。
+    3. **角色ID匹配**: 使用【角色信息】中的准确ID（如 char_hero），**严禁**自己编造ID。
+    4. **引用校验**: 在生成的 JSON 中，每个节点**必须**包含 \`_source_text\` 字段，填入该节点对应的小说原文作为依据，防止幻觉。
 
     ### 上下文信息:
-    - 登场角色: \n${charContext}
-    - **可用场景列表**: \n${sceneContext}
+    - **登场角色** (必须使用下列ID，不要编造新ID): 
+${charContext}
+
+    - **可用场景列表**: 
+${sceneContext}
+    
     - **前情提要**: ${input.previousContext || "无 (这是开篇)"}
 
     ### 任务目标:
@@ -176,8 +184,8 @@ ${input.storyText}
 请开始生成:`
                 }
             ],
-            temperature: 0.3,
-            maxTokens: 3500 // Increased token limit for detailed output
+            temperature: 0.2, // 降低温度以获得更稳定的输出（qwen3-max性能强，可以用更低温度）
+            maxTokens: 4096 // 增加token限制以支持更详细的输出
         });
 
         if (!content) throw new Error("Empty AI response");

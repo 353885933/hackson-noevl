@@ -1,0 +1,35 @@
+# 忽略node_modules
+node_modules/
+
+# 忽略构建产物
+dist/
+build/
+package-lock.json
+
+# 忽略环境变量文件（敏感信息）
+.env
+.env.local
+.env.*.local
+.npmrc
+.yarnrc
+
+# 忽略日志文件
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# 忽略IDE配置
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# 忽略OS文件
+.DS_Store
+Thumbs.db
+
+# 忽略临时文件
+*.tmp
+.cache/
