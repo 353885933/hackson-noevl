@@ -92,37 +92,16 @@ export const analyzeStory = async (
     // --- Phase 4: Visual Asset Generation (Pre-generation Mode) ---
     console.log("Phase 4/4: Generating Visual Assets (Wanx)...");
 
-    // We need images for both individual nodes (CG/Items) AND background scenes
-    const visualNodes = finalScript.nodes.filter(n => n.visualSpecs && !n.visualSpecs.imageUrl);
     const sceneAssets = finalScript.scenes.filter(s => !s.imageUrl);
-    const characterAssets = finalScript.characters.filter(c => !c.imageUrl);
+    const visualNodes = finalScript.nodes.filter(n => n.visualSpecs && !n.visualSpecs.imageUrl);
 
-    const totalAssets = visualNodes.length + sceneAssets.length + characterAssets.length;
+    const totalAssets = sceneAssets.length + visualNodes.length;
     let assetsDone = 0;
 
     if (totalAssets > 0) {
       const { generateImage } = await import("./imageGenerationService");
 
-      // 1. Generate Character Visuals
-      for (const char of characterAssets) {
-        onProgress?.({
-          phase: 'ASSETS',
-          current: assetsDone,
-          total: totalAssets,
-          message: `正在刻画角色形象: ${char.name}...`
-        });
-        try {
-          // Characters are best as 'anime' style for Galgame feel, or 'reality' if prompt suggests
-          char.imageUrl = await withRetry(() =>
-            generateImage(`Character portrait, ${char.name}, ${char.visualTraits}`, 'anime')
-          );
-        } catch (err) {
-          console.error(`❌ Failed to generate character [${char.id}]:`, err);
-        }
-        assetsDone++;
-      }
-
-      // 2. Generate Scene Backgrounds
+      // 1. Generate Scene Backgrounds
       for (const scene of sceneAssets) {
         onProgress?.({
           phase: 'ASSETS',
@@ -132,7 +111,6 @@ export const analyzeStory = async (
         });
 
         try {
-          // Use 'reality' or 'anime' based on scene description or default
           scene.imageUrl = await withRetry(() =>
             generateImage(scene.visualPrompt, 'reality')
           );
@@ -142,25 +120,20 @@ export const analyzeStory = async (
         assetsDone++;
       }
 
-      // 2. Generate Node Assets (CG/Items)
-      for (let i = 0; i < visualNodes.length; i++) {
-        const node = visualNodes[i];
-        if (!node.visualSpecs) continue;
-
+      // 2. Generate Node Assets (Legacy fallback)
+      for (const node of visualNodes) {
         onProgress?.({
           phase: 'ASSETS',
           current: assetsDone,
           total: totalAssets,
-          message: `正在生成特写/道具 (${i + 1}/${visualNodes.length}): ${node.visualSpecs.description.slice(0, 15)}...`
+          message: `正在生成分镜细节...`
         });
-
         try {
-          const imageUrl = await withRetry(() =>
-            generateImage(node.visualSpecs!.visualPrompt, node.visualSpecs!.type === 'cg' ? 'reality' : 'anime')
+          node.visualSpecs!.imageUrl = await withRetry(() =>
+            generateImage(node.visualSpecs!.visualPrompt, 'reality')
           );
-          node.visualSpecs.imageUrl = imageUrl;
         } catch (err) {
-          console.error(`❌ Failed to generate node asset:`, err);
+          console.error(`❌ Failed to generate node visual:`, err);
         }
         assetsDone++;
       }
@@ -170,10 +143,6 @@ export const analyzeStory = async (
     if (typeof window !== 'undefined') {
       const allAssetMappings: { ref: any, key: string, url: string }[] = [];
 
-      // Collect characters
-      finalScript.characters.forEach(c => {
-        if (c.imageUrl) allAssetMappings.push({ ref: c, key: 'imageUrl', url: c.imageUrl });
-      });
       // Collect scenes
       finalScript.scenes.forEach(s => {
         if (s.imageUrl) allAssetMappings.push({ ref: s, key: 'imageUrl', url: s.imageUrl });
