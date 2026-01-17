@@ -20,8 +20,11 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
   // Interaction State
   const [typingText, setTypingText] = useState('');
   const [isTyping, setIsTyping] = useState(true);
-  const [historyLog, setHistoryLog] = useState<LogEntry[]>([]);
+  const [historyLog, setHistoryLog] = useState<{ characterName: string; text: string }[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [isBgLoaded, setIsBgLoaded] = useState(false);
+  const [activeBg, setActiveBg] = useState<string>('');
+  const [loadedCgs, setLoadedCgs] = useState<Record<string, boolean>>({});
 
   // Image Generation State
   const [generatedImages, setGeneratedImages] = useState<Record<string, string>>(() => {
@@ -95,10 +98,22 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
       generateImage(currentNode.visualSpecs.visualPrompt)
         .then(url => {
           console.log(`[GameEngine] Generated image for ${currentNode.id}: ${url}`);
-          setGeneratedImages(prev => ({
-            ...prev,
-            [currentNode.id]: url
-          }));
+          // Preload the image to ensure it's in cache before rendering
+          const img = new Image();
+          img.onload = () => {
+            setGeneratedImages(prev => ({
+              ...prev,
+              [currentNode.id]: url
+            }));
+          };
+          img.onerror = () => {
+            console.warn(`[GameEngine] Failed to preload generated image for ${currentNode.id}: ${url}`);
+            setGeneratedImages(prev => ({
+              ...prev,
+              [currentNode.id]: url // Still set URL, but it might fail to display
+            }));
+          };
+          img.src = url;
         })
         .catch(err => {
           console.error(`[GameEngine] Failed to generate image for ${currentNode.id}`, err);
@@ -138,6 +153,21 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
     // 3. If branching, do nothing on click (user must click a specific button)
   };
 
+  // Handle background transition
+  useEffect(() => {
+    if (!currentNode?.sceneId) return;
+    const bgUrl = getBackgroundImage(currentNode.sceneId);
+    if (bgUrl === activeBg) return;
+
+    setIsBgLoaded(false);
+    const img = new Image();
+    img.onload = () => {
+      setActiveBg(bgUrl);
+      setIsBgLoaded(true);
+    };
+    img.src = bgUrl;
+  }, [currentNode?.sceneId, activeBg]);
+
   const advanceNode = (nextNodeId: string) => {
     if (!currentNode) return;
 
@@ -174,14 +204,16 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
   return (
     <div className="relative w-full h-screen bg-ink overflow-hidden font-sans select-none">
 
-      {/* 1. Background Layer */}
+      {/* 1. Background Layer (Buffered) */}
       <div
-        className="absolute inset-0 bg-cover bg-center transition-all duration-1000"
+        className="absolute inset-0 bg-cover bg-center transition-opacity duration-1000"
         style={{
-          backgroundImage: `url(${getBackgroundImage(currentNode.sceneId)})`,
-          opacity: 0.6
+          backgroundImage: `url(${activeBg})`,
+          opacity: isBgLoaded ? 0.6 : 0
         }}
       />
+      {/* Background Dimmer/Safety */}
+      <div className="absolute inset-0 bg-ink pointer-events-none" style={{ opacity: isBgLoaded ? 0 : 0.8 }} />
 
       {/* 2. Scene/Mood Overlay */}
       <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-ink/50 pointer-events-none" />
@@ -210,13 +242,17 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
             // Fullscreen CG
             <div className="relative w-full h-full">
               <img
-                src={generatedImages[currentNode.id] || currentNode.visualSpecs.imageUrl || `https://picsum.photos/seed/${currentNode.visualSpecs.description.length}/1280/720?grayscale&blur=1`}
-                className={`w-full h-full object-cover transition-opacity duration-700 ${generatedImages[currentNode.id] ? 'opacity-100' : 'opacity-50 blur-sm'}`}
+                src={generatedImages[currentNode.id] || currentNode.visualSpecs.imageUrl || ""}
+                onLoad={() => setLoadedCgs(prev => ({ ...prev, [currentNode.id]: true }))}
+                className={`w-full h-full object-cover transition-opacity duration-700 ${loadedCgs[currentNode.id] ? 'opacity-100' : 'opacity-0'}`}
               />
-              {!generatedImages[currentNode.id] && (
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <div className="bg-black/50 text-white px-4 py-2 rounded-full font-mono text-sm animate-pulse">
-                    GENERATING VISUALS...
+              {!loadedCgs[currentNode.id] && (
+                <div className="absolute inset-0 flex items-center justify-center bg-ink">
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="w-12 h-12 border-4 border-signal border-t-transparent rounded-full animate-spin" />
+                    <div className="bg-black/50 text-white px-4 py-2 rounded-full font-mono text-sm uppercase tracking-widest">
+                      Synchronizing Visual Buffer...
+                    </div>
                   </div>
                 </div>
               )}
@@ -226,10 +262,11 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
             <div className="bg-ink/80 p-4 border-2 border-signal shadow-2xl rotate-1 relative transition-all duration-500 hover:scale-105">
               <div className="relative w-[400px] h-auto min-h-[300px]">
                 <img
-                  src={generatedImages[currentNode.id] || currentNode.visualSpecs.imageUrl || `https://picsum.photos/seed/${currentNode.visualSpecs.description.length}/600/400`}
-                  className={`w-full h-full object-cover grayscale contrast-125 transition-all duration-700 ${generatedImages[currentNode.id] ? 'grayscale-0' : ''}`}
+                  src={generatedImages[currentNode.id] || currentNode.visualSpecs.imageUrl || ""}
+                  onLoad={() => setLoadedCgs(prev => ({ ...prev, [currentNode.id]: true }))}
+                  className={`w-full h-full object-cover grayscale contrast-125 transition-all duration-700 ${loadedCgs[currentNode.id] ? 'opacity-100 grayscale-0' : 'opacity-0'}`}
                 />
-                {!generatedImages[currentNode.id] && (
+                {!loadedCgs[currentNode.id] && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm">
                     <div className="w-8 h-8 border-4 border-signal border-t-transparent rounded-full animate-spin"></div>
                   </div>

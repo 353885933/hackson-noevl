@@ -195,16 +195,23 @@ export const analyzeStory = async (
         let loadedCount = 0;
         await Promise.all(allAssetMappings.map(async (mapping) => {
           try {
-            const response = await fetch(mapping.url);
-            if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
-
-            const blobData = await response.blob();
-            if (blobData) {
+            // Priority 1: Fetch as Blob (for object URL / instant display)
+            const response = await fetch(mapping.url).catch(() => null);
+            if (response && response.ok) {
+              const blobData = await response.blob();
               const localUrl = URL.createObjectURL(blobData);
               mapping.ref[mapping.key] = localUrl;
+            } else {
+              // Priority 2: Standard Image preloading (populates browser cache)
+              await new Promise((res) => {
+                const img = new Image();
+                img.onload = () => res(null);
+                img.onerror = () => res(null);
+                img.src = mapping.url;
+              });
             }
           } catch (err) {
-            console.warn(`Failed to blobtify asset: ${mapping.url}`, err);
+            console.warn(`Failed to preload asset: ${mapping.url}`, err);
           } finally {
             loadedCount++;
             onProgress?.({
