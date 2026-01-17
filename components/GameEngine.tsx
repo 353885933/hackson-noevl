@@ -234,52 +234,6 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
         )}
       </div>
 
-      {/* 3.5. Spot Illustration / CG Layer */}
-      {currentNode.visualSpecs && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-15 animate-fade-in">
-          {currentNode.visualSpecs.type === 'cg' ? (
-            // Fullscreen CG
-            // Fullscreen CG
-            <div className="relative w-full h-full">
-              <img
-                src={generatedImages[currentNode.id] || currentNode.visualSpecs.imageUrl || ""}
-                onLoad={() => setLoadedCgs(prev => ({ ...prev, [currentNode.id]: true }))}
-                className={`w-full h-full object-cover transition-opacity duration-700 ${loadedCgs[currentNode.id] ? 'opacity-100' : 'opacity-0'}`}
-              />
-              {!loadedCgs[currentNode.id] && (
-                <div className="absolute inset-0 flex items-center justify-center bg-ink">
-                  <div className="flex flex-col items-center gap-4">
-                    <div className="w-12 h-12 border-4 border-signal border-t-transparent rounded-full animate-spin" />
-                    <div className="bg-black/50 text-white px-4 py-2 rounded-full font-mono text-sm uppercase tracking-widest">
-                      Synchronizing Visual Buffer...
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            // Item Spot (Centered with frame)
-            <div className="bg-ink/80 p-4 border-2 border-signal shadow-2xl rotate-1 relative transition-all duration-500 hover:scale-105">
-              <div className="relative w-[400px] h-auto min-h-[300px]">
-                <img
-                  src={generatedImages[currentNode.id] || currentNode.visualSpecs.imageUrl || ""}
-                  onLoad={() => setLoadedCgs(prev => ({ ...prev, [currentNode.id]: true }))}
-                  className={`w-full h-full object-cover grayscale contrast-125 transition-all duration-700 ${loadedCgs[currentNode.id] ? 'opacity-100 grayscale-0' : 'opacity-0'}`}
-                />
-                {!loadedCgs[currentNode.id] && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/20 backdrop-blur-sm">
-                    <div className="w-8 h-8 border-4 border-signal border-t-transparent rounded-full animate-spin"></div>
-                  </div>
-                )}
-              </div>
-              <div className="bg-signal text-paper font-mono text-center text-xs py-1 mt-2">
-                OBSERVED OBJECT // {currentNode.visualSpecs.description}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
       {/* 4. UI Layer */}
       <div className="absolute inset-0 z-20 flex flex-col justify-between p-4 md:p-8">
 
