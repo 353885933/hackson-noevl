@@ -60,7 +60,9 @@ export const generateFragment = async (input: FragmentInput): Promise<StoryNode[
     4. **线性连接**: 
        - 每个线性节点 nextNodeId 先填 "NEXT" 占位。
        - 最后一个节点的 nextNodeId 填 "END_OF_FRAGMENT"。
-    5. **场景一致性**: sceneId 必须严格从"可用场景列表"中选择。
+    5. **场景一致性**: sceneId 必须严格从"可用场景列表"中选择。严禁在此处自行生成新的场景或物品特写。
+    6. **视觉提示 (visualPrompt)**: visualPrompt 字段必须**仅**描述广阔的环境背景和氛围，**严禁**包含任何角色、物品或特定对象。
+    7. **场景数量限制**: 每个章节（或连续的片段）的场景数量应控制在 3-5 个之间，避免频繁切换场景。
 
     ### 示例输出:
     [
