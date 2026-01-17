@@ -3,6 +3,7 @@ export interface Character {
   name: string;
   description: string;
   visualTraits: string; // Used to seed image generation
+  imageUrl?: string;
   themeColor?: string;
 }
 

@@ -95,14 +95,34 @@ export const analyzeStory = async (
     // We need images for both individual nodes (CG/Items) AND background scenes
     const visualNodes = finalScript.nodes.filter(n => n.visualSpecs && !n.visualSpecs.imageUrl);
     const sceneAssets = finalScript.scenes.filter(s => !s.imageUrl);
+    const characterAssets = finalScript.characters.filter(c => !c.imageUrl);
 
-    const totalAssets = visualNodes.length + sceneAssets.length;
+    const totalAssets = visualNodes.length + sceneAssets.length + characterAssets.length;
     let assetsDone = 0;
 
     if (totalAssets > 0) {
       const { generateImage } = await import("./imageGenerationService");
 
-      // 1. Generate Scene Backgrounds
+      // 1. Generate Character Visuals
+      for (const char of characterAssets) {
+        onProgress?.({
+          phase: 'ASSETS',
+          current: assetsDone,
+          total: totalAssets,
+          message: `正在刻画角色形象: ${char.name}...`
+        });
+        try {
+          // Characters are best as 'anime' style for Galgame feel, or 'reality' if prompt suggests
+          char.imageUrl = await withRetry(() =>
+            generateImage(`Character portrait, ${char.name}, ${char.visualTraits}`, 'anime')
+          );
+        } catch (err) {
+          console.error(`❌ Failed to generate character [${char.id}]:`, err);
+        }
+        assetsDone++;
+      }
+
+      // 2. Generate Scene Backgrounds
       for (const scene of sceneAssets) {
         onProgress?.({
           phase: 'ASSETS',
@@ -146,43 +166,54 @@ export const analyzeStory = async (
       }
     }
 
-    // --- Phase 5: Browser Preloading (Smooth Experience) ---
+    // --- Phase 5: Browser Preloading (Zero-Loading Mode) ---
     if (typeof window !== 'undefined') {
-      const allUrls = [
-        ...finalScript.scenes.map(s => s.imageUrl),
-        ...finalScript.nodes.map(n => n.visualSpecs?.imageUrl)
-      ].filter((url): url is string => !!url);
+      const allAssetMappings: { ref: any, key: string, url: string }[] = [];
 
-      if (allUrls.length > 0) {
-        console.log(`Phase 5/4: Preloading ${allUrls.length} assets into browser cache...`);
+      // Collect characters
+      finalScript.characters.forEach(c => {
+        if (c.imageUrl) allAssetMappings.push({ ref: c, key: 'imageUrl', url: c.imageUrl });
+      });
+      // Collect scenes
+      finalScript.scenes.forEach(s => {
+        if (s.imageUrl) allAssetMappings.push({ ref: s, key: 'imageUrl', url: s.imageUrl });
+      });
+      // Collect node assets
+      finalScript.nodes.forEach(n => {
+        if (n.visualSpecs?.imageUrl) allAssetMappings.push({ ref: n.visualSpecs, key: 'imageUrl', url: n.visualSpecs.imageUrl });
+      });
+
+      if (allAssetMappings.length > 0) {
+        console.log(`Phase 5/4: Blobtifying ${allAssetMappings.length} assets for zero-loading...`);
         onProgress?.({
           phase: 'PRELOADING',
           current: 0,
-          total: allUrls.length,
-          message: "正在预加载视觉资源，确保游戏体验流畅..."
+          total: allAssetMappings.length,
+          message: "正在进行最后的高速缓存同步，确保瞬间响应..."
         });
 
         let loadedCount = 0;
-        await Promise.all(allUrls.map(url => {
-          return new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => {
-              loadedCount++;
-              onProgress?.({
-                phase: 'PRELOADING',
-                current: loadedCount,
-                total: allUrls.length,
-                message: `已预载资源 (${loadedCount}/${allUrls.length})...`
-              });
-              resolve(url);
-            };
-            img.onerror = () => {
-              console.warn(`Failed to preload image: ${url}`);
-              loadedCount++;
-              resolve(url);
-            };
-            img.src = url;
-          });
+        await Promise.all(allAssetMappings.map(async (mapping) => {
+          try {
+            const response = await fetch(mapping.url);
+            if (!response.ok) throw new Error(`Fetch failed: ${response.status}`);
+
+            const blobData = await response.blob();
+            if (blobData) {
+              const localUrl = URL.createObjectURL(blobData);
+              mapping.ref[mapping.key] = localUrl;
+            }
+          } catch (err) {
+            console.warn(`Failed to blobtify asset: ${mapping.url}`, err);
+          } finally {
+            loadedCount++;
+            onProgress?.({
+              phase: 'PRELOADING',
+              current: loadedCount,
+              total: allAssetMappings.length,
+              message: `资源已就绪 (${loadedCount}/${allAssetMappings.length})...`
+            });
+          }
         }));
       }
     }

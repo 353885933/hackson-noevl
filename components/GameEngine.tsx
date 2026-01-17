@@ -155,9 +155,11 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
     </div>
   );
 
-  const getCharacterImage = (char: Character) => {
-    const seed = char.name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
-    return `https://picsum.photos/seed/${seed}/400/800`;
+  const getCharacterImage = (character: Character) => {
+    if (character.imageUrl) return character.imageUrl;
+    // Fallback
+    const seed = character.name.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+    return `https://picsum.photos/seed/${seed}_char/600/900?grayscale`;
   };
 
   const getBackgroundImage = (sceneId: string) => {
