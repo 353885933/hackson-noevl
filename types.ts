@@ -49,13 +49,14 @@ export enum GameState {
   ANALYZING_OUTLINE = 'ANALYZING_OUTLINE',
   GENERATING_CHUNKS = 'GENERATING_CHUNKS',
   GENERATING_ASSETS = 'GENERATING_ASSETS',
+  PRELOADING = 'PRELOADING',
   PLAYING = 'PLAYING',
   ENDED = 'ENDED',
   ERROR = 'ERROR'
 }
 
 export interface AnalysisProgress {
-  phase: 'OUTLINE' | 'CHUNKS' | 'ASSETS';
+  phase: 'OUTLINE' | 'CHUNKS' | 'ASSETS' | 'PRELOADING';
   current: number;
   total: number;
   message: string;

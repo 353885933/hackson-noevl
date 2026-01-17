@@ -21,6 +21,7 @@ const App: React.FC = () => {
         if (p.phase === 'OUTLINE') setGameState(GameState.ANALYZING_OUTLINE);
         else if (p.phase === 'CHUNKS') setGameState(GameState.GENERATING_CHUNKS);
         else if (p.phase === 'ASSETS') setGameState(GameState.GENERATING_ASSETS);
+        else if (p.phase === 'PRELOADING') setGameState(GameState.PRELOADING);
       });
 
       console.log("Script Generated:", result);
@@ -41,7 +42,8 @@ const App: React.FC = () => {
   const isAnalyzing =
     gameState === GameState.ANALYZING_OUTLINE ||
     gameState === GameState.GENERATING_CHUNKS ||
-    gameState === GameState.GENERATING_ASSETS;
+    gameState === GameState.GENERATING_ASSETS ||
+    gameState === GameState.PRELOADING;
 
   return (
     <main className="min-h-screen bg-paper text-ink selection:bg-signal selection:text-white overflow-hidden">

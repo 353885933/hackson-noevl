@@ -20,9 +20,10 @@ export const InputStage: React.FC<InputStageProps> = ({ onAnalyze, isLoading, pr
   const getProgressPercentage = () => {
     if (!progress) return 0;
     // Simple mapping: OUTLINE: 0-20, CHUNKS: 20-60, ASSETS: 60-100
-    if (progress.phase === 'OUTLINE') return 10 + (progress.current / progress.total) * 10;
-    if (progress.phase === 'CHUNKS') return 20 + (progress.current / progress.total) * 40;
-    if (progress.phase === 'ASSETS') return 60 + (progress.current / progress.total) * 40;
+    if (progress.phase === 'OUTLINE') return 0 + (progress.current / progress.total) * 10;
+    if (progress.phase === 'CHUNKS') return 10 + (progress.current / progress.total) * 40;
+    if (progress.phase === 'ASSETS') return 50 + (progress.current / progress.total) * 40;
+    if (progress.phase === 'PRELOADING') return 90 + (progress.current / progress.total) * 10;
     return 0;
   };
 

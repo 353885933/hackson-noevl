@@ -146,6 +146,47 @@ export const analyzeStory = async (
       }
     }
 
+    // --- Phase 5: Browser Preloading (Smooth Experience) ---
+    if (typeof window !== 'undefined') {
+      const allUrls = [
+        ...finalScript.scenes.map(s => s.imageUrl),
+        ...finalScript.nodes.map(n => n.visualSpecs?.imageUrl)
+      ].filter((url): url is string => !!url);
+
+      if (allUrls.length > 0) {
+        console.log(`Phase 5/4: Preloading ${allUrls.length} assets into browser cache...`);
+        onProgress?.({
+          phase: 'PRELOADING',
+          current: 0,
+          total: allUrls.length,
+          message: "正在预加载视觉资源，确保游戏体验流畅..."
+        });
+
+        let loadedCount = 0;
+        await Promise.all(allUrls.map(url => {
+          return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+              loadedCount++;
+              onProgress?.({
+                phase: 'PRELOADING',
+                current: loadedCount,
+                total: allUrls.length,
+                message: `已预载资源 (${loadedCount}/${allUrls.length})...`
+              });
+              resolve(url);
+            };
+            img.onerror = () => {
+              console.warn(`Failed to preload image: ${url}`);
+              loadedCount++;
+              resolve(url);
+            };
+            img.src = url;
+          });
+        }));
+      }
+    }
+
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     console.log(`✅ LSP Pipeline Complete in ${duration}s. Script Ready.`);
 
