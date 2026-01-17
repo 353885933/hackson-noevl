@@ -33,16 +33,18 @@ export const generateOutline = async (storyText: string): Promise<StoryOutline> 
     1. **提取角色**: 识别文中出现的所有角色(包括有台词的配角)，并生成视觉描述。
        - **注意**: 任何有对话的角色都必须提取，否则会导致剧本中出现未知人物。
     2. **提取场景**: 识别文中出现的所有场景 (Location)，并为每个场景担任“视觉场景导演”。
+       - **一致性原则 (重要)**: 尽量**减少**场景总数。如果剧情在同一物理空间发生（如：一直在客厅，只是时间变了），请使用同一个 sceneId。避免无谓的频繁场景切换。
     3. **生成节拍表 (Beat Sheet)**: 将剧情拆解为一系列关键事件 (Beats)。
        - 每一个 Beat 代表剧情的一个小阶段（约 200-500 字的剧情跨度）。
        - Beat 不需要包含具体对话，只需要一句话摘要。
        - 确保 Beat 的颗粒度适中一章小说通常可以拆解为 5-10 个 Beats。
 
     ### 【视觉场景导演指令】
-    你必须将文学描写转化为极其专业的 AI 绘图提示词。你的 \`visualPrompt\` 字段必须是一个结构化的 JSON 字符串（压缩为一行），包含以下要素：
+    你必须将文学描写转化为极其专业的 AI 绘图提示词，用于生成**环境背景图**。
+    你的 \`visualPrompt\` 字段必须是一个结构化的 JSON 字符串（压缩为一行），包含以下要素：
     - **style**: 艺术基因锁（例如 "Traditional Chinese ink wash painting", "Studio Ghibli style anime", "Hyper-realistic cinematic"）。
-    - **scene**: 地点+天气+时间。
-    - **shot**: 镜头视角+焦点。
+    - **scene**: 地点+天气+时间 (侧重环境描写)。
+    - **shot**: 镜头视角+焦点 (侧重于广角或全景，展现环境)。
     - **lighting**: 光源+阴影质感。
     - **mood**: 3-5个情绪词。
     - **colors/textures/props/effects**: 匹配 style 的视觉元素。
