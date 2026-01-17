@@ -1,16 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { GalgameScript, GameState, StoryNode, Character } from '../types';
 import { IconRefresh, IconHistory, IconArrowRight } from './Icons';
-import { generateImage } from '../services/imageGenerationService';
 
 interface GameEngineProps {
   script: GalgameScript;
   onReset: () => void;
-}
-
-interface LogEntry {
-  characterName: string;
-  text: string;
 }
 
 export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
@@ -24,20 +18,6 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
   const [showHistory, setShowHistory] = useState(false);
   const [isBgLoaded, setIsBgLoaded] = useState(false);
   const [activeBg, setActiveBg] = useState<string>('');
-  const [loadedCgs, setLoadedCgs] = useState<Record<string, boolean>>({});
-
-  // Image Generation State
-  const [generatedImages, setGeneratedImages] = useState<Record<string, string>>(() => {
-    // Pre-populate with images already generated in the pipeline
-    const initial: Record<string, string> = {};
-    script.nodes.forEach(node => {
-      if (node.visualSpecs?.imageUrl) {
-        initial[node.id] = node.visualSpecs.imageUrl;
-      }
-    });
-    return initial;
-  });
-  const [generatingNodes, setGeneratingNodes] = useState<Set<string>>(new Set());
 
   // Refs needed for auto-scroll
   const historyEndRef = useRef<HTMLDivElement>(null);
@@ -87,51 +67,20 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
     }
   }, [showHistory]);
 
-  // Trigger Image Generation
+  // Handle background transition
   useEffect(() => {
-    if (currentNode?.visualSpecs && generatedImages[currentNode.id] === undefined && !generatingNodes.has(currentNode.id)) {
-      console.log(`[GameEngine] Triggering generation for node ${currentNode.id}: ${currentNode.visualSpecs.visualPrompt}`);
+    if (!currentNode?.sceneId) return;
+    const bgUrl = getBackgroundImage(currentNode.sceneId);
+    if (bgUrl === activeBg) return;
 
-      // Mark as generating
-      setGeneratingNodes(prev => new Set(prev).add(currentNode.id));
-
-      generateImage(currentNode.visualSpecs.visualPrompt)
-        .then(url => {
-          console.log(`[GameEngine] Generated image for ${currentNode.id}: ${url}`);
-          // Preload the image to ensure it's in cache before rendering
-          const img = new Image();
-          img.onload = () => {
-            setGeneratedImages(prev => ({
-              ...prev,
-              [currentNode.id]: url
-            }));
-          };
-          img.onerror = () => {
-            console.warn(`[GameEngine] Failed to preload generated image for ${currentNode.id}: ${url}`);
-            setGeneratedImages(prev => ({
-              ...prev,
-              [currentNode.id]: url // Still set URL, but it might fail to display
-            }));
-          };
-          img.src = url;
-        })
-        .catch(err => {
-          console.error(`[GameEngine] Failed to generate image for ${currentNode.id}`, err);
-          // Set to empty string to prevent retry loop
-          setGeneratedImages(prev => ({
-            ...prev,
-            [currentNode.id]: ""
-          }));
-        })
-        .finally(() => {
-          setGeneratingNodes(prev => {
-            const next = new Set(prev);
-            next.delete(currentNode.id);
-            return next;
-          });
-        });
-    }
-  }, [currentNode, generatedImages, generatingNodes]);
+    setIsBgLoaded(false);
+    const img = new Image();
+    img.onload = () => {
+      setActiveBg(bgUrl);
+      setIsBgLoaded(true);
+    };
+    img.src = bgUrl;
+  }, [currentNode?.sceneId, activeBg]);
 
   // Actions
   const handleInteraction = (e?: React.MouseEvent) => {
@@ -149,24 +98,7 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
       advanceNode(currentNode.choices[0].nextNodeId);
       return;
     }
-
-    // 3. If branching, do nothing on click (user must click a specific button)
   };
-
-  // Handle background transition
-  useEffect(() => {
-    if (!currentNode?.sceneId) return;
-    const bgUrl = getBackgroundImage(currentNode.sceneId);
-    if (bgUrl === activeBg) return;
-
-    setIsBgLoaded(false);
-    const img = new Image();
-    img.onload = () => {
-      setActiveBg(bgUrl);
-      setIsBgLoaded(true);
-    };
-    img.src = bgUrl;
-  }, [currentNode?.sceneId, activeBg]);
 
   const advanceNode = (nextNodeId: string) => {
     if (!currentNode) return;
@@ -177,13 +109,6 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
 
     setCurrentNodeId(nextNodeId);
   };
-
-  if (!currentNode) return (
-    <div className="flex flex-col items-center justify-center h-screen bg-ink text-signal">
-      <h2 className="text-xl font-bold mb-4">错误: 剧情节点丢失 (ID: {currentNodeId})</h2>
-      <button onClick={onReset} className="underline">返回主菜单</button>
-    </div>
-  );
 
   const getCharacterImage = (character: Character) => {
     if (character.imageUrl) return character.imageUrl;
@@ -200,6 +125,13 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
     const seed = sceneId.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
     return `https://picsum.photos/seed/${seed}_bg/1280/720`;
   };
+
+  if (!currentNode) return (
+    <div className="flex flex-col items-center justify-center h-screen bg-ink text-signal">
+      <h2 className="text-xl font-bold mb-4">错误: 剧情节点丢失 (ID: {currentNodeId})</h2>
+      <button onClick={onReset} className="underline">返回主菜单</button>
+    </div>
+  );
 
   return (
     <div className="relative w-full h-screen bg-ink overflow-hidden font-sans select-none">
@@ -220,7 +152,7 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
 
       {/* 3. Character Layer */}
       <div className="absolute inset-0 flex items-end justify-center pointer-events-none z-10">
-        {currentCharacter && !currentNode.visualSpecs && (
+        {currentCharacter && (
           <div className="relative animate-slide-up">
             <img
               src={getCharacterImage(currentCharacter)}
@@ -313,10 +245,10 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
           <div
             onClick={handleInteraction}
             className={`
-                bg-ink/95 border-t-4 border-signal text-paper p-6 md:p-10 shadow-2xl backdrop-blur-md relative min-h-[180px]
-                transition-colors hover:bg-ink
-                ${isBranching && !isTyping ? 'cursor-default' : 'cursor-pointer'}
-            `}
+                  bg-ink/95 border-t-4 border-signal text-paper p-6 md:p-10 shadow-2xl backdrop-blur-md relative min-h-[180px]
+                  transition-colors hover:bg-ink
+                  ${isBranching && !isTyping ? 'cursor-default' : 'cursor-pointer'}
+              `}
           >
 
             {/* Decorative Grid */}
@@ -339,7 +271,6 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
 
             {/* Text Content */}
             <p className="font-serif text-xl md:text-2xl leading-relaxed tracking-wide select-none text-paper/90">
-              {/* 对话自动添加「」 */}
               {currentCharacter && '「'}
               {typingText}
               {currentCharacter && '」'}
@@ -349,7 +280,6 @@ export const GameEngine: React.FC<GameEngineProps> = ({ script, onReset }) => {
             {/* Visual Indicators */}
             {!isTyping && (
               <div className="absolute bottom-6 right-6 animate-bounce">
-                {/* If linear, show arrow. If branching, show nothing (buttons are above). If ending, show square. */}
                 {isLinear && <IconArrowRight className="w-6 h-6 text-signal" />}
                 {currentNode.isEnding && <div className="w-4 h-4 bg-signal"></div>}
               </div>
