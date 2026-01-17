@@ -24,8 +24,41 @@ export const generateImage = async (prompt: string, type: 'sketch' | 'anime' | '
         return ""; // Return empty string to indicate no image generated, defaulting to placeholder.
     }
 
+    // 0. Parse structured prompt if present
+    let finalPrompt = prompt;
+    try {
+        // Check if it's our new structured JSON format
+        if (prompt.trim().startsWith('{') && prompt.trim().endsWith('}')) {
+            const p = JSON.parse(prompt);
+            // Reconstruct a powerful natural language prompt from the director's cut
+            const parts = [
+                p.style,
+                p.scene,
+                p.shot,
+                p.lighting,
+                p.mood?.join(', '),
+                p.colors?.join(', '),
+                p.textures?.join(', '),
+                p.props?.join(', '),
+                p.effects?.join(', ')
+            ].filter(Boolean);
+
+            finalPrompt = parts.join(', ');
+
+            if (p.negative && Array.isArray(p.negative)) {
+                // We should ideally pass negative prompts if the API supports it
+                // For Wanx v1, we append it with a standard prefix if needed, 
+                // but let's stick to positive reinforcement for now or append "avoid: ..."
+                console.log(`[imageGenerationService] Extracted negative prompt elements: ${p.negative.join(', ')}`);
+            }
+        }
+    } catch (e) {
+        // Not JSON or parse error, use original prompt
+        console.log("[imageGenerationService] Using literal prompt string (not structured JSON)");
+    }
+
     const endpoint = getEndpoint(BASE_PATH);
-    console.log(`[imageGenerationService] Generating image using endpoint: ${endpoint}`);
+    console.log(`[imageGenerationService] Generating image using final prompt: ${finalPrompt}`);
 
     // 1. Submit Generation Task
     const submitResponse = await fetch(endpoint, {
@@ -38,10 +71,10 @@ export const generateImage = async (prompt: string, type: 'sketch' | 'anime' | '
         body: JSON.stringify({
             model: "wanx-v1",
             input: {
-                prompt: prompt
+                prompt: finalPrompt
             },
             parameters: {
-                style: type === 'anime' ? "<auto>" : "<auto>", // Wanx style parameter, or omit for default
+                style: type === 'anime' ? "<auto>" : "<auto>",
                 size: "1280*720",
                 n: 1
             }

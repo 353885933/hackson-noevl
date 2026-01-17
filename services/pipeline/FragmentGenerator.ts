@@ -45,7 +45,7 @@ export const generateFragment = async (input: FragmentInput): Promise<StoryNode[
     ### 上下文信息:
     - 登场角色: \n${charContext}
     - **可用场景列表**: \n${sceneContext}
-    - **前情提要**: ${input.previousContext || "无 (这是开篇)"}
+    - **前情提提要**: ${input.previousContext || "无 (这是开篇)"}
 
     ### 任务目标:
     请**仅生成**涵盖以下剧情节拍的剧本节点:
@@ -56,19 +56,28 @@ export const generateFragment = async (input: FragmentInput): Promise<StoryNode[
     2. **纯粹对话**: 
        - characterId 对应的 \`text\` 字段只能包含角色说的话。
        - **严禁**包含 "他笑着说"、"怒吼道" 等引导语。
-       - **严禁**截断对话首字。
     3. **旁白分离**: 环境描写和动作描写必须放入独立的 \`characterId: null\` 节点。
-       **关键规则**: 角色内心的独白、思考、自言自语，**必须**归类为该角色的对话(characterId填角色ID)，而**不是**null。这样能显示出角色的名字，表示是他在思考。
     4. **线性连接**: 
-       - 除非是分支选项，否则每个节点都必须包含 **1个 "继续" 选项** (nextNodeId 先填 "NEXT" 占位, 后期组装时会自动替换)。
-       - 最后一个节点的选项 nextNodeId 填 "END_OF_FRAGMENT"。
-    5. **场景一致性**:
-       - sceneId 必须严格从"可用场景列表"中选择。严禁捏造 ID。
-    6. **特殊视觉提取 (重要)**:
-       - 如果剧情涉及**关键物品**（如：捡起一把左轮手枪、看着古老的笔记）或**特殊动作**（如：照镜子查看伤口），请添加 \`visualSpecs\` 字段。
-       - 格式: \`visualSpecs: { type: "item" | "cg", description: "物品或情境描述", visualPrompt: "英文绘画提示词" }\`
-       - **item**: 想要展示某个具体物品时使用。
-       - **cg**: 想要展示某个充满临场感的画面时使用。
+       - 每个线性节点 nextNodeId 先填 "NEXT" 占位。
+       - 最后一个节点的 nextNodeId 填 "END_OF_FRAGMENT"。
+    5. **场景一致性**: sceneId 必须严格从"可用场景列表"中选择。
+
+    ### 特殊视觉提取 & 视觉导演指令 (重要):
+    如果剧情涉及**关键物品**或**特殊动作/情境**，请添加 \`visualSpecs\` 字段。
+    你必须为这些视觉节点担任“视觉场景导演”，将文学描写转化为结构化的 JSON 提示词字符串（压缩为一行）。
+    
+    \`visualSpecs\` 格式: \`{ type: "item" | "cg", description: "物品或情境描述", visualPrompt: "JSON格式提示词" }\`
+
+    ### 【视觉场景导演提示词 JSON 结构】
+    - **style**: 艺术基因锁（例如 "Traditional Chinese ink wash painting", "Studio Ghibli style anime"）
+    - **scene**: 地点+天气+时间
+    - **shot**: 视角+焦点
+    - **lighting**: 光影质感
+    - **mood**: 情绪关键词
+    - **colors/textures/props/effects**: 视觉细节
+    - **negative**: 5-7个排除项
+
+    \`visualPrompt\` 示例: \`{"style":"Classical oil painting, style of Rubens","scene":"dim library, dust motes dancing","shot":"macro close-up on hands","lighting":"warm candlelight, soft chiaroscuro","mood":["reverent","scholarly","mysterious"],"colors":["burnt sienna","deep parchment","gold"],"textures":["cracked leather","yellowed paper"],"props":["quill pen","brass inkwell"],"effects":["glazing","soft focus"],"negative":["modern","digital art","sharp edges"]}\`
 
 
     ### 示例输出:
