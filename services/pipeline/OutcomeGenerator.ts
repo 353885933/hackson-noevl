@@ -94,7 +94,7 @@ export const generateOutline = async (storyText: string): Promise<StoryOutline> 
   console.log(`[OutcomeGenerator] Calling ModelScope GLM-4.7...`);
 
   try {
-    const { chatCompletion } = await import("../modelscopeService");
+    const { chatCompletion } = await import("../dashscopeService");
 
     const content = await chatCompletion({
       messages: [

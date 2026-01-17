@@ -50,26 +50,50 @@ const createModelscopeClient = (): OpenAI => {
 };
 
 /**
- * 非流式调用 GLM-4.7
+ * 非流式调用 GLM-4.7 (with retry logic for rate limiting)
  */
 export const chatCompletion = async (
   options: ChatCompletionOptions
 ): Promise<string> => {
   const client = createModelscopeClient();
+  const maxRetries = 3;
+  let lastError: Error | null = null;
 
-  const response = await client.chat.completions.create({
-    model: MODELSCOPE_MODEL,
-    messages: options.messages,
-    temperature: options.temperature ?? 0.7,
-    max_tokens: options.maxTokens ?? 2048,
-  });
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await client.chat.completions.create({
+        model: MODELSCOPE_MODEL,
+        messages: options.messages,
+        temperature: options.temperature ?? 0.7,
+        max_tokens: options.maxTokens ?? 2048,
+      });
 
-  const content = response.choices[0]?.message?.content;
-  if (!content) {
-    throw new Error("No response from ModelScope GLM-4.7.");
+      const content = response.choices[0]?.message?.content;
+      if (!content) {
+        throw new Error("No response from ModelScope GLM-4.7.");
+      }
+
+      return content;
+    } catch (error: any) {
+      lastError = error;
+
+      // Check if it's a rate limit error (429)
+      if (error?.status === 429 || error?.message?.includes('429')) {
+        if (attempt < maxRetries) {
+          // Exponential backoff: wait 2^attempt seconds
+          const waitTime = Math.pow(2, attempt) * 1000;
+          console.log(`Rate limit hit, retrying in ${waitTime}ms... (attempt ${attempt + 1}/${maxRetries})`);
+          await new Promise(resolve => setTimeout(resolve, waitTime));
+          continue;
+        }
+      }
+
+      // If it's not a rate limit error, or we've exhausted retries, throw
+      throw error;
+    }
   }
 
-  return content;
+  throw lastError || new Error("Failed after retries");
 };
 
 /**
